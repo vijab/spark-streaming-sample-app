@@ -3,22 +3,36 @@ package com.vijai.app.metrics
 import java.net.{InetAddress, URL}
 import java.util
 import java.util.Collections
+import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
 
 import org.apache.hadoop.metrics2.sink.timeline.{AbstractTimelineMetricsSink, TimelineMetric}
 import org.apache.hadoop.metrics2.sink.timeline.cache.TimelineMetricsCache
 import org.slf4j.LoggerFactory
 
-import scala.util.Random
+class SparkAmbariMetricsSink(collectorUri: String, zkUrl: String, appId: String, instanceId: String, emitIntervalInMs: Long) extends AbstractTimelineMetricsSink {
 
-class SparkAmbariMetricsSink(collectorUri: String, zkUrl: String, appId: String, instanceId: String) extends AbstractTimelineMetricsSink {
+  private[this] val logger = LoggerFactory.getLogger("SparkAmbariMetricsSink")
 
-  val logger = LoggerFactory.getLogger("SparkAmbariMetricsSink")
+  private[this] lazy val collectorUrl: URL = new URL(collectorUri)
 
-  lazy val collectorUrl: URL = new URL(collectorUri)
+  private[this] lazy val host: InetAddress = InetAddress.getLocalHost
 
-  lazy val host: InetAddress = InetAddress.getLocalHost
+  private[this] lazy val timelineMetricsCache: TimelineMetricsCache = new TimelineMetricsCache(1000, 60 * 1000)
 
-  lazy val timelineMetricsCache: TimelineMetricsCache = new TimelineMetricsCache(1000, 60 * 1000)
+  private[this] val scheduledReporter = new Runnable with Serializable {
+    override def run(): Unit = {
+      timelineMetricsCache.synchronized{
+        val metrics = timelineMetricsCache.getAllMetrics
+        // TODO only emit when there is something to emit.
+        logger.info(s"Emitting ${metrics.getMetrics.size()} metrics to ambari-metrics-collector")
+        emitMetrics(metrics)
+      }
+    }
+  }
+
+  private[this] lazy val scheduler: ScheduledExecutorService = Executors.newScheduledThreadPool(1)
+
+  scheduler.scheduleAtFixedRate(scheduledReporter, emitIntervalInMs, emitIntervalInMs, TimeUnit.MILLISECONDS)
 
   def addGauge(metricName: String, ts: Long, value: Double): Unit = {
     Option(timelineMetricsCache.getTimelineMetric(metricName)) match {
@@ -34,17 +48,12 @@ class SparkAmbariMetricsSink(collectorUri: String, zkUrl: String, appId: String,
         timelineMetric.setTimestamp(System.currentTimeMillis())
         timelineMetric.setType("GAUGE")
         timelineMetric.setUnits("SECONDS")
-        (0 until 10) foreach {i =>
+        (0 until 5) foreach {i =>
           timelineMetric.getMetricValues.put(ts + (i * 1000), value)
         }
         timelineMetricsCache.putTimelineMetric(timelineMetric)
       }
     }
-  }
-
-  def emit() = {
-    val metrics = timelineMetricsCache.getAllMetrics
-    emitMetrics(metrics)
   }
 
   override def getCollectorUri(s: String): String = collectorUri

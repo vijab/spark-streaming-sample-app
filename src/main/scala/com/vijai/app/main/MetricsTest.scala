@@ -3,6 +3,7 @@ package com.vijai.app.main
 import com.vijai.app.metrics.SparkAmbariMetricsSink
 import org.slf4j.LoggerFactory
 
+import scala.concurrent.duration.DurationInt
 import scala.util.Random
 
 object MetricsTest {
@@ -15,7 +16,8 @@ object MetricsTest {
       collectorUri = "http://sandbox-hdp.hortonworks.com:6188",
       zkUrl = "http://sandbox-hdp.hortonworks.com:2181",
       appId = "APP_TEST_1",
-      instanceId = "INSTANCE_LOCAL_1"
+      instanceId = "INSTANCE_LOCAL_1",
+      emitIntervalInMs = (30 seconds).toMillis
     )
 
     val startTs = System.currentTimeMillis() - 10 * 60 * 60 * 1000
