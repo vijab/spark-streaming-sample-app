@@ -1,47 +1,48 @@
 package com.vijai.app.main
 
-import com.vijai.app.schema.CustomerList
+import com.vijai.app.metrics.MetricsSink
+import com.vijai.app.schema.CDSRecord
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.streaming.{OutputMode, StreamingQuery}
-import org.apache.spark.sql.types.TimestampType
+
+import scala.concurrent.duration.DurationInt
 
 object MainClass extends Logging {
+
+  lazy val metricsSink: MetricsSink = new MetricsSink(emitIntervalInMs = (15 seconds).toMillis) {
+    override val collectorUri: String = "http://sandbox-hdp.hortonworks.com:6188"
+    override val zkUrl: String = "http://sandbox-hdp.hortonworks.com:2181"
+    override val appId: String = "journalnode"
+    override val instanceId: String = "localhost"
+  }
 
   def main(args: Array[String]): Unit = {
 
     val spark = SparkSession.builder()
       .appName("SampleStreamingApp")
+      .config("spark.streaming.stopGracefullyOnShutdown","true")
       .getOrCreate()
+
+    val cdsRecordProcessor = new CdsRecordProcessor(metricsSink)
 
     import spark.implicits._
 
-    val customerListSchema = Encoders.product[CustomerList].schema
+    val cdsSchema = Encoders.product[CDSRecord].schema
 
     val input: DataFrame = spark
       .readStream
       .format("kafka")
       .option("kafka.bootstrap.servers", "sandbox-hdp.hortonworks.com:6667")
-      .option("subscribe", "customer-lists-2")
+      .option("subscribe", "cds-messages-1")
       .load()
 
-    val customerList: Dataset[CustomerList] = input
+    val stream = input
       .select($"value" cast "string" as "json")
-      .select(from_json($"json", customerListSchema) as "data")
-      .select("data.*").as[CustomerList]
-
-    val waterMarked = customerList
-      .withColumn("createdOn", ($"createdOn" / 1000).cast(TimestampType))
-      .withWatermark(eventTime = "createdOn", delayThreshold = "2 seconds")
-      .groupBy(window($"createdOn", "5 seconds"), $"location")
-      .agg(first("location"))
-
-
-    val stream: StreamingQuery = waterMarked
+      .select(from_json($"json", cdsSchema) as "data")
+      .select("data.*").as[CDSRecord]
       .writeStream
-      .outputMode(OutputMode.Update())
-      .format("console")
+      .foreach(cdsRecordProcessor)
       .start()
 
     log.info("Started streaming records.")

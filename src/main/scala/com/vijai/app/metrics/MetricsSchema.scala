@@ -1,6 +1,5 @@
 package com.vijai.app.metrics
 
-
 case class Metric(
                    timestamp: Long,
                    `type`: String,

@@ -27,5 +27,5 @@ libraryDependencies ++= Seq(
   "io.circe" %% "circe-parser"
 ).map(_ % circeVersion)
 
-libraryDependencies += "org.apache.ambari" % "ambari-metrics-common" % "2.7.0.0.0"
-libraryDependencies += "org.apache.ambari" % "ambari-metrics-hadoop-sink" % "2.4.2.2.1"
+libraryDependencies += "org.apache.ambari" % "ambari-metrics-common" % "2.7.0.0.0" % "provided"
+libraryDependencies += "org.apache.ambari" % "ambari-metrics-hadoop-sink" % "2.4.2.2.1" % "provided"
