@@ -8,7 +8,7 @@ scalaVersion := "2.11.12"
 
 resolvers += "HDP Repository" at "http://repo.hortonworks.com/content/repositories/releases/"
 
-val sparkVersion = "2.3.2"
+val sparkVersion = "2.3.1"
 val circeVersion = "0.10.0"
 
 // Spark
@@ -16,7 +16,7 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core",
   "org.apache.spark" %% "spark-streaming",
   "org.apache.spark" %% "spark-streaming-kafka-0-10",
-  "org.apache.spark" %% "spark-sql-kafka-0-10",
+  //"org.apache.spark" %% "spark-sql-kafka-0-10",
   "org.apache.spark" %% "spark-sql"
 ).map(_ % sparkVersion % "provided")
 

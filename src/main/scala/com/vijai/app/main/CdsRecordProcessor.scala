@@ -1,21 +1,21 @@
 package com.vijai.app.main
 
-import com.vijai.app.metrics.{Gauge, MetricsSink}
 import com.vijai.app.schema.CDSRecord
 import org.apache.spark.internal.Logging
+import org.apache.spark.source.AmbariMetricsSource
 import org.apache.spark.sql.ForeachWriter
 
-class CdsRecordProcessor(metricsSink: MetricsSink) extends ForeachWriter[CDSRecord] with Logging with Serializable {
+class CdsRecordProcessor(implicit ambariMetricsSource: AmbariMetricsSource) extends ForeachWriter[CDSRecord] with Logging with Serializable {
   override def open(partitionId: Long, version: Long): Boolean = true
 
   override def process(value: CDSRecord): Unit = {
     val ts = System.currentTimeMillis()
-    metricsSink.pushMetric(Gauge, "EventPutSuccessCount", ts, 1)
+    ambariMetricsSource.counter("EventPutSuccessCount").inc()
     log.info("Processing record")
     if ((ts % 10) == 0) {
-      metricsSink.pushMetric(Gauge, "ActiveThreads", System.currentTimeMillis(), 1)
+      ambariMetricsSource.counter("ActiveThreads").inc()
     } else {
-      metricsSink.pushMetric(Gauge, "EventTakeSuccessCount", System.currentTimeMillis(), 1)
+      ambariMetricsSource.counter("EventTakeSuccessCount").inc()
     }
   }
 

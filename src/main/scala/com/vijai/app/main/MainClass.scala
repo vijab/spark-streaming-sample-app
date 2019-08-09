@@ -2,7 +2,9 @@ package com.vijai.app.main
 
 import com.vijai.app.metrics.MetricsSink
 import com.vijai.app.schema.CDSRecord
+import org.apache.spark.SparkEnv
 import org.apache.spark.internal.Logging
+import org.apache.spark.source.AmbariMetricsSource
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
 
@@ -10,12 +12,12 @@ import scala.concurrent.duration.DurationInt
 
 object MainClass extends Logging {
 
-  lazy val metricsSink: MetricsSink = new MetricsSink(emitIntervalInMs = (15 seconds).toMillis) {
+/*  lazy val metricsSink: MetricsSink = new MetricsSink(emitIntervalInMs = (15 seconds).toMillis) {
     override val collectorUri: String = "http://sandbox-hdp.hortonworks.com:6188"
     override val zkUrl: String = "http://sandbox-hdp.hortonworks.com:2181"
     override val appId: String = "journalnode"
     override val instanceId: String = "localhost"
-  }
+  }*/
 
   def main(args: Array[String]): Unit = {
 
@@ -24,7 +26,11 @@ object MainClass extends Logging {
       .config("spark.streaming.stopGracefullyOnShutdown","true")
       .getOrCreate()
 
-    val cdsRecordProcessor = new CdsRecordProcessor(metricsSink)
+    val ambariMetricsSource: AmbariMetricsSource = new AmbariMetricsSource
+
+    SparkEnv.get.metricsSystem.registerSource(ambariMetricsSource)
+
+    val cdsRecordProcessor = new CdsRecordProcessor()(ambariMetricsSource)
 
     import spark.implicits._
 
