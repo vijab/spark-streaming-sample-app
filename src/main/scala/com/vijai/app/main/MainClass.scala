@@ -1,14 +1,11 @@
 package com.vijai.app.main
 
-import com.vijai.app.metrics.MetricsSink
 import com.vijai.app.schema.CDSRecord
 import org.apache.spark.SparkEnv
 import org.apache.spark.internal.Logging
 import org.apache.spark.source.AmbariMetricsSource
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
-
-import scala.concurrent.duration.DurationInt
 
 object MainClass extends Logging {
 
@@ -24,6 +21,10 @@ object MainClass extends Logging {
     val spark = SparkSession.builder()
       .appName("SampleStreamingApp")
       .config("spark.streaming.stopGracefullyOnShutdown","true")
+      //.config("spark.metrics.conf.*.sink.ambarimetrics.class", "org.apache.spark.sink.AmbariMetricsSink")
+      .config("spark.metrics.conf.executor.sink.ambarimetrics.class", "org.apache.spark.sink.AmbariMetricsSink")
+      .config("spark.metrics.conf.driver.sink.ambarimetrics.class", "org.apache.spark.sink.AmbariMetricsSink")
+      .config("spark.ssl.enabled", "false")
       .getOrCreate()
 
     val ambariMetricsSource: AmbariMetricsSource = new AmbariMetricsSource
