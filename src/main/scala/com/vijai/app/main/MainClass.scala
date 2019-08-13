@@ -3,7 +3,7 @@ package com.vijai.app.main
 import com.vijai.app.schema.CDSRecord
 import org.apache.spark.SparkEnv
 import org.apache.spark.internal.Logging
-import org.apache.spark.source.AmbariMetricsSource
+import org.apache.spark.metrics.source.AmbariSource
 import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
 
@@ -21,17 +21,19 @@ object MainClass extends Logging {
     val spark = SparkSession.builder()
       .appName("SampleStreamingApp")
       .config("spark.streaming.stopGracefullyOnShutdown","true")
-      //.config("spark.metrics.conf.*.sink.ambarimetrics.class", "org.apache.spark.sink.AmbariMetricsSink")
-      .config("spark.metrics.conf.executor.sink.ambarimetrics.class", "org.apache.spark.sink.AmbariMetricsSink")
-      .config("spark.metrics.conf.driver.sink.ambarimetrics.class", "org.apache.spark.sink.AmbariMetricsSink")
-      .config("spark.ssl.enabled", "false")
+      .config("spark.metrics.conf.driver.sink.ambari.class", "org.apache.spark.metrics.sink.AmbariSink")
+      .config("spark.metrics.conf.executor.sink.ambari.class", "org.apache.spark.metrics.sink.AmbariSink")
+      .config("spark.metrics.conf.worker.sink.ambari.class", "org.apache.spark.metrics.sink.AmbariSink")
+      .config("spark.metrics.conf.driver.source.ambari.class", "org.apache.spark.metrics.source.AmbariSource")
+      .config("spark.metrics.conf.executor.source.ambari.class", "org.apache.spark.metrics.source.AmbariSource")
+      .config("spark.metrics.conf.worker.source.ambari.class", "org.apache.spark.metrics.source.AmbariSource")
       .getOrCreate()
 
-    val ambariMetricsSource: AmbariMetricsSource = new AmbariMetricsSource
+    val ambariSource = new AmbariSource
 
-    SparkEnv.get.metricsSystem.registerSource(ambariMetricsSource)
+    SparkEnv.get.metricsSystem.registerSource(ambariSource)
 
-    val cdsRecordProcessor = new CdsRecordProcessor()(ambariMetricsSource)
+    val cdsRecordProcessor = new CdsRecordProcessor
 
     import spark.implicits._
 
@@ -54,6 +56,9 @@ object MainClass extends Logging {
 
     log.info("Started streaming records.")
 
+    SparkEnv.get.metricsSystem.getSourcesByName("ambari").foreach{s =>
+      log.info(s"Source name, ${s.sourceName}")
+    }
 
     stream.awaitTermination()
   }

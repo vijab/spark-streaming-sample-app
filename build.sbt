@@ -28,7 +28,9 @@ libraryDependencies ++= Seq(
 ).map(_ % circeVersion)
 
 libraryDependencies += "org.eclipse.jetty" % "jetty-servlet" % "8.1.18.v20150929"
-libraryDependencies += "io.dropwizard.metrics" % "metrics-core" % "4.1.0"
+libraryDependencies += "io.dropwizard.metrics" % "metrics-core" % "4.1.0" % "provided"
+libraryDependencies += "org.slf4j" % "slf4j-log4j12" % "1.7.27" % "provided"
+
 
 assemblyMergeStrategy in assembly := {
   case PathList("org","aopalliance", xs @ _*) => MergeStrategy.last

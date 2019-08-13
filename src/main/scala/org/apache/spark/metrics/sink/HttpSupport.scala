@@ -1,4 +1,4 @@
-package org.apache.spark.sink
+package org.apache.spark.metrics.sink
 
 import java.io.{BufferedReader, InputStreamReader}
 import java.net.{HttpURLConnection, URL}
@@ -7,10 +7,11 @@ import java.util.stream.Collectors
 import com.vijai.app.metrics.Metrics
 import io.circe.generic.auto._
 import io.circe.syntax._
+import org.apache.spark.internal.Logging
 
 import scala.util.control.NonFatal
 
-trait HttpSupport {
+trait HttpSupport extends Logging {
 
   val collectorUri: String
 
@@ -18,12 +19,14 @@ trait HttpSupport {
 
   def postMetrics(metrics: Metrics): String = {
     val con: HttpURLConnection = collectorUrl.openConnection().asInstanceOf[HttpURLConnection]
-    val jsonData = metrics.asJson.noSpaces.getBytes("utf-8")
+    val json = metrics.asJson
+    val jsonData = json.noSpaces.getBytes("utf-8")
     con.setRequestMethod("POST")
-    con.setRequestProperty("Content-Type", "application/json; utf-8")
-    con.setRequestProperty("Accept", "application/json")
+    con.setRequestProperty("Content-Type", "application/json")
+    //con.setRequestProperty("Accept", "application/json")
     con.setDoOutput(true)
     withResources(con.getOutputStream)(os => {
+      log.info(s"Posting json, $json")
       os.write(jsonData, 0, jsonData.length)
     })
     withResources(new BufferedReader(new InputStreamReader(con.getInputStream, "utf-8")))(br => {

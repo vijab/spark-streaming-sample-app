@@ -1,21 +1,27 @@
 package com.vijai.app.main
 
 import com.vijai.app.schema.CDSRecord
+import org.apache.spark.SparkEnv
 import org.apache.spark.internal.Logging
-import org.apache.spark.source.AmbariMetricsSource
+import org.apache.spark.metrics.source.AmbariSource
 import org.apache.spark.sql.ForeachWriter
 
-class CdsRecordProcessor(implicit ambariMetricsSource: AmbariMetricsSource) extends ForeachWriter[CDSRecord] with Logging with Serializable {
+class CdsRecordProcessor extends ForeachWriter[CDSRecord] with Logging with Serializable {
   override def open(partitionId: Long, version: Long): Boolean = true
 
   override def process(value: CDSRecord): Unit = {
+
+    def ambariSource = {
+      SparkEnv.get.metricsSystem.getSourcesByName("ambari")(0).asInstanceOf[AmbariSource]
+    }
+
     val ts = System.currentTimeMillis()
-    ambariMetricsSource.counter("EventPutSuccessCount").inc()
+    ambariSource.COUNTER_MESSAGES_PUSHED.inc()
     log.info("Processing record")
     if ((ts % 10) == 0) {
-      ambariMetricsSource.counter("ActiveThreads").inc()
+      ambariSource.COUNTER_MESSAGES_ERROR.inc()
     } else {
-      ambariMetricsSource.counter("EventTakeSuccessCount").inc()
+      ambariSource.COUNTER_MESSAGES_OUT.inc()
     }
   }
 
